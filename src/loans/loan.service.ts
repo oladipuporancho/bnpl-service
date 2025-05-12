@@ -14,36 +14,42 @@ export class LoansService {
 
   // Apply for a loan
   async applyLoan(userId: string, dto: ApplyLoanDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+  const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new NotFoundException('User not found');
 
-    const loan = await this.prisma.loan.create({
-      data: {
-        userId,
-        amount: dto.amount,
-        purpose: dto.purpose,
-        duration: dto.durationInMonths,
-        status: 'pending',
-        loanType: 'undecided',
-        repaymentType: 'undecided',
-        interestRate: 0, // Initially 0
-        category: dto.category,
-        remainingBalance: dto.amount, // Store remaining balance initially equal to loan amount
-      },
-    });
-
-    await this.emailService.sendEmail(
-      user.email,
-      'Loan Application Received',
-      `Your loan application for ₦${dto.amount} has been received and is under review.`,
-      `<p>Your loan application for <strong>₦${dto.amount}</strong> has been received and is under review.</p>`,
-    );
-
-    return {
-      message: 'Loan application submitted successfully',
-      data: loan,
-    };
+  const validCategories = ['fashion', 'electronics', 'home appliances'];
+  if (!validCategories.includes(dto.category.toLowerCase())) {
+    throw new BadRequestException('Invalid loan category');
   }
+
+  const loan = await this.prisma.loan.create({
+    data: {
+      userId,
+      amount: dto.amount,
+      purpose: dto.purpose,
+      duration: dto.durationInMonths,
+      status: 'pending',
+      loanType: 'undecided',
+      repaymentType: 'undecided',
+      interestRate: 0,
+      category: dto.category.toLowerCase(),
+      remainingBalance: dto.amount,
+      vendor: dto.vendor,
+    },
+  });
+
+  await this.emailService.sendEmail(
+    user.email,
+    'Loan Application Received',
+    `Your loan application for ₦${dto.amount} has been received and is under review.`,
+    `<p>Your loan application for <strong>₦${dto.amount}</strong> has been received and is under review.</p>`,
+  );
+
+  return {
+    message: 'Loan application submitted successfully',
+    data: loan,
+  };
+}
 
   // Approve a loan (admin only)
   async approveLoan(loanId: string, adminId: string, adminPassword: string) {
