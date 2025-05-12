@@ -1,9 +1,11 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   UploadedFiles,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
@@ -73,5 +75,10 @@ export class AuthController {
   @Post('refresh-token')
   refreshToken(@Body('refreshToken') refreshToken: string) {
     return this.authService.refreshToken(refreshToken);
+  }
+
+  @Get('users')
+  getAllUsers() {
+    return this.authService.getAllUsers();
   }
 }

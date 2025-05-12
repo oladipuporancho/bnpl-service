@@ -50,4 +50,16 @@ export class LoansController {
 
     return this.loansService.repayLoan(loanId, body.userId, repayLoanDto);
   }
+
+  // Get market share (loan percentage) by category
+  @Get('stats/category')
+  getLoanStatsByCategory() {
+    return this.loansService.getLoanStatsByCategory();
+  }
+
+  // Get total loan amount for a user
+  @Get('stats/user-total/:userId')  // Changed from POST to GET
+  getUserTotalLoan(@Param('userId') userId: string) {
+    return this.loansService.getUserTotalLoan(userId);
+  }
 }

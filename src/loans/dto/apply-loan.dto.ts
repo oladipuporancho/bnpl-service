@@ -4,4 +4,5 @@ export class ApplyLoanDto {
   purpose: string;
   durationInMonths: number;
   category: string; // Add category here
+  vendor?: string;
 }

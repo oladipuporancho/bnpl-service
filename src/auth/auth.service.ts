@@ -59,11 +59,10 @@ export class AuthService {
       },
     });
 
-    // If files are provided, save the file paths or names (depending on your storage solution)
     const bankStatementPaths = files.bankStatement?.map(file => file.path) || [];
     const idDocumentPaths = files.idDocument?.map(file => file.path) || [];
 
-    // Save file paths in the database or perform any necessary logic here
+    // Save file paths in the database if required
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = addHours(new Date(), 24);
@@ -99,8 +98,8 @@ export class AuthService {
           idType: user.idType,
           kycStatus: user.kycStatus,
           isEmailVerified: user.isEmailVerified,
-          bankStatement: bankStatementPaths,  // Add file paths to the response
-          idDocument: idDocumentPaths,        // Add file paths to the response
+          bankStatement: bankStatementPaths,
+          idDocument: idDocumentPaths,
         },
       },
     };
@@ -278,5 +277,30 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+  }
+
+  async getAllUsers() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        bvn: true,
+        bankAccount: true,
+        idType: true,
+        kycStatus: true,
+        isEmailVerified: true,
+        isAdmin: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      message: 'All users fetched successfully',
+      count: users.length,
+      users,
+    };
   }
 }

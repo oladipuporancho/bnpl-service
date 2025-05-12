@@ -34,6 +34,7 @@ model Loan {
   id               String    @id @default(uuid())
   userId           String
   amount           Float
+  vendor           String
   loanType         String
   repaymentType    String
   interestRate     Float

@@ -219,4 +219,29 @@ export class LoansService {
       data: updatedLoan,
     };
   }
+
+  // Get market share (loan percentage) by category
+  async getLoanStatsByCategory() {
+    const totalLoans = await this.prisma.loan.count();
+    const categories = ['fashion', 'electronics', 'home appliances'];
+
+    const distribution = await Promise.all(
+      categories.map(async (category) => {
+        const count = await this.prisma.loan.count({ where: { category } });
+        return {
+          category,
+          percentage: totalLoans === 0 ? 0 : parseFloat(((count / totalLoans) * 100).toFixed(2)),
+        };
+      })
+    );
+
+    return distribution;
+  }
+
+  // Get total loan amount for a user
+  async getUserTotalLoan(userId: string) {
+    const loans = await this.prisma.loan.findMany({ where: { userId } });
+    const total = loans.reduce((sum, loan) => sum + loan.amount, 0);
+    return { userId, totalLoan: total };
+  }
 }
