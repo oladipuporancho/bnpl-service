@@ -30,6 +30,7 @@ model User {
   refreshTokens       RefreshToken[]
 }
 
+
 model Loan {
   id               String    @id @default(uuid())
   userId           String

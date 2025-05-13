@@ -1,12 +1,10 @@
 import {
   Controller,
   Post,
-  Get,
   Body,
   UploadedFiles,
   UseInterceptors,
-  UseGuards,
-  InternalServerErrorException,
+  Get,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
@@ -14,51 +12,43 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import * as fs from 'fs';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-@UseInterceptors(
-  FileFieldsInterceptor(
-    [
-      { name: 'bankStatement', maxCount: 1 },
-      { name: 'idDocument', maxCount: 1 },
-    ],
-    {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadDir = '/tmp/uploads';
-          if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-          }
-          cb(null, uploadDir);
-        },
-        filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'bankStatement', maxCount: 1 },
+        { name: 'idDocument', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: './uploads',
+          filename: (req, file, cb) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            cb(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
+  async register(
+    @Body() dto: RegisterDto,
+    @UploadedFiles()
+    files: {
+      bankStatement?: Express.Multer.File[];
+      idDocument?: Express.Multer.File[];
     },
-  ),
-)
-async register(
-  @Body() dto: RegisterDto,
-  @UploadedFiles()
-  files: {
-    bankStatement?: Express.Multer.File[];
-    idDocument?: Express.Multer.File[];
-  },
-) {
-  try {
-    return await this.authService.register(dto, files);
-  } catch (error) {
-    console.error('Register error:', error);
-    throw new InternalServerErrorException('Register failed');
+  ) {
+    try {
+      return await this.authService.register(dto, files);
+    } catch (error) {
+      throw error; // Allow error to propagate so you can see actual issue
+    }
   }
-}
 
   @Post('login')
   login(@Body() dto: LoginDto) {
