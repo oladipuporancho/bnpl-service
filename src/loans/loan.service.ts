@@ -304,30 +304,35 @@ export class LoansService {
     return { userId, totalLoan: total };
   }
 
-  async getAllLoanHistory() {
-    const loans = await this.prisma.loan.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: true,
-      },
+  async getGroupedLoanHistoryForUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
     });
 
-    return loans.map((loan) => ({
-      loanId: loan.id,
-      amountApproved: loan.amount,
-      status: loan.status,
-      interestRate: loan.interestRate,
-      durationInMonths: loan.duration,
-      category: loan.category,
-      purpose: loan.purpose,
-      vendor: loan.vendor,
-      createdAt: loan.createdAt,
-      user: {
-        userId: loan.userId,
-        name: loan.user.fullName,
-      },
-    }));
+    if (!user) throw new NotFoundException('User not found');
+
+    const loans = await this.prisma.loan.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      userId: user.id,
+      name: user.fullName,
+      loans: loans.map((loan) => ({
+        loanId: loan.id,
+        amountApproved: loan.amount,
+        status: loan.status,
+        interestRate: loan.interestRate,
+        durationInMonths: loan.duration,
+        category: loan.category,
+        purpose: loan.purpose,
+        vendor: loan.vendor,
+        createdAt: loan.createdAt,
+      })),
+    };
   }
+
 
   async getUserRepaymentSchedule(userId: string) {
     const loans = await this.prisma.loan.findMany({
@@ -362,5 +367,4 @@ export class LoansService {
       };
     });
   }
-
 }

@@ -56,9 +56,9 @@ export class LoansController {
     return this.loansService.getUserTotalLoan(userId);
   }
 
-  @Get('history/all')
-  getAllLoanHistory() {
-    return this.loansService.getAllLoanHistory();
+  @Get('history/grouped/:userId')
+  getGroupedLoanHistoryForUser(@Param('userId') userId: string) {
+    return this.loansService.getGroupedLoanHistoryForUser(userId);
   }
 
   @Get('repayment-schedule/:userId')
