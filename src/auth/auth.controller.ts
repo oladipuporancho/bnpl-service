@@ -43,11 +43,7 @@ export class AuthController {
       idDocument?: Express.Multer.File[];
     },
   ) {
-    try {
-      return await this.authService.register(dto, files);
-    } catch (error) {
-      throw error; // Allow error to propagate so you can see actual issue
-    }
+    return await this.authService.register(dto, files);
   }
 
   @Post('login')
@@ -68,11 +64,6 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() { token, newPassword }: { token: string; newPassword: string }) {
     return this.authService.resetPassword(token, newPassword);
-  }
-
-  @Post('verify-email')
-  verifyEmail(@Body('token') token: string) {
-    return this.authService.verifyEmail(token);
   }
 
   @Post('refresh-token')

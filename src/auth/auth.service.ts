@@ -10,7 +10,7 @@ import * as bcrypt from 'bcryptjs';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
-import { addMinutes, addHours } from 'date-fns';
+import { addMinutes } from 'date-fns';
 import * as crypto from 'crypto';
 import { EmailService } from '../email/email.service';
 
@@ -32,7 +32,6 @@ export class AuthService {
     },
   ) {
     try {
-      // Check if the email or phone number already exists
       const existing = await this.prisma.user.findFirst({
         where: {
           OR: [{ email: dto.email }, { phone: dto.phoneNumber }],
@@ -40,7 +39,6 @@ export class AuthService {
       });
 
       if (existing) {
-        console.error('User with email or phone already exists:', dto.email, dto.phoneNumber);
         throw new ConflictException('Email or phone already exists');
       }
 
@@ -48,11 +46,8 @@ export class AuthService {
         throw new BadRequestException('Password is required');
       }
 
-      // Hash the password
       const hashedPassword = await bcrypt.hash(dto.password, 10);
-      console.log('Hashed password for user:', dto.email);
 
-      // Create the user
       const user = await this.prisma.user.create({
         data: {
           fullName: dto.fullName,
@@ -63,44 +58,17 @@ export class AuthService {
           bankAccount: dto.bankAccountNumber,
           idType: dto.idType,
           kycStatus: 'pending',
+          isEmailVerified: true, // auto verify since email verification is removed
         },
       });
 
-      console.log('User created:', user);
-
-      // Handle file uploads
       const bankStatementPaths = files.bankStatement?.map(file => file.path) || [];
       const idDocumentPaths = files.idDocument?.map(file => file.path) || [];
-      console.log('Bank statement file paths:', bankStatementPaths);
-      console.log('ID document file paths:', idDocumentPaths);
-
-      // Generate email verification token
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = addHours(new Date(), 24);
-
-      // Store the email verification token in the database
-      await this.prisma.emailVerificationToken.create({
-        data: {
-          token,
-          userId: user.id,
-          expiresAt,
-        },
-      });
-
-      const verificationUrl = `${BASE_URL}/verify-email/${token}`;
-
-      // Send email verification
-      await this.emailService.sendEmail(
-        user.email,
-        'Verify Your Email',
-        `Click the link to verify your email: ${verificationUrl}`,
-        `<p>Click the link to verify your email:</p><a href="${verificationUrl}">${verificationUrl}</a>`,
-      );
 
       return {
-        message: 'Registration successful. Please verify your email.',
+        message: 'Registration successful.',
         data: {
-          access_token: token,
+          access_token: 'N/A', // no token generated here
           user: {
             id: user.id,
             fullName: user.fullName,
@@ -117,7 +85,6 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error('Error during user registration:', error);
       throw new InternalServerErrorException('Register failed: ' + error.message);
     }
   }
@@ -130,19 +97,11 @@ export class AuthService {
     });
 
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      console.error('Invalid credentials for login attempt:', dto.identifier);
       throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (!user.isEmailVerified) {
-      console.error('Email not verified for user:', user.email);
-      throw new UnauthorizedException('Email not verified. Please check your inbox.');
     }
 
     const payload = { sub: user.id, email: user.email };
     const token = await this.jwtService.signAsync(payload);
-
-    console.log('Login successful for user:', user.email);
 
     return {
       message: 'Login successful',
@@ -172,14 +131,11 @@ export class AuthService {
     });
 
     if (!admin || !(await bcrypt.compare(dto.password, admin.password))) {
-      console.error('Invalid admin credentials for login attempt:', dto.identifier);
       throw new UnauthorizedException('Invalid admin credentials');
     }
 
     const payload = { sub: admin.id, email: admin.email, isAdmin: true };
     const token = await this.jwtService.signAsync(payload);
-
-    console.log('Admin login successful for:', admin.email);
 
     return {
       message: 'Admin login successful',
@@ -225,7 +181,6 @@ export class AuthService {
 
     const resetUrl = `${BASE_URL}/password-reset/${token}`;
 
-    // Send password reset email
     await this.emailService.sendEmail(
       user.email,
       'Password Reset Request',
@@ -256,26 +211,6 @@ export class AuthService {
     await this.prisma.passwordResetToken.delete({ where: { token } });
 
     return { message: 'Password successfully reset' };
-  }
-
-  async verifyEmail(token: string) {
-    const record = await this.prisma.emailVerificationToken.findUnique({
-      where: { token },
-      include: { user: true },
-    });
-
-    if (!record || record.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestException('Invalid or expired email verification token');
-    }
-
-    await this.prisma.user.update({
-      where: { id: record.userId },
-      data: { isEmailVerified: true },
-    });
-
-    await this.prisma.emailVerificationToken.delete({ where: { token } });
-
-    return { message: 'Email successfully verified' };
   }
 
   async refreshToken(refreshToken: string) {
@@ -319,8 +254,6 @@ export class AuthService {
       },
       orderBy: { createdAt: 'desc' },
     });
-
-    console.log('Fetched all users:', users.length);
 
     return {
       message: 'All users fetched successfully',
