@@ -1,9 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
 import { RepayLoanDto } from './dto/repay-loan.dto';
 import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcryptjs';
+
+const MAX_CREDIT_LIMIT = 50000;
 
 @Injectable()
 export class LoansService {
@@ -12,46 +18,104 @@ export class LoansService {
     private emailService: EmailService,
   ) {}
 
-  // Apply for a loan
-  async applyLoan(userId: string, dto: ApplyLoanDto) {
-  const user = await this.prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new NotFoundException('User not found');
-
-  const validCategories = ['fashion', 'electronics', 'home appliances'];
-  if (!validCategories.includes(dto.category.toLowerCase())) {
-    throw new BadRequestException('Invalid loan category');
+  async getUserUsedCredit(userId: string): Promise<number> {
+    const loans = await this.prisma.loan.findMany({
+      where: {
+        userId,
+        status: { in: ['approved', 'pending'] },
+      },
+    });
+    return loans.reduce((sum, loan) => sum + loan.amount, 0);
   }
 
-  const loan = await this.prisma.loan.create({
-    data: {
+  async applyLoan(userId: string, dto: ApplyLoanDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const currentCreditUsed = await this.getUserUsedCredit(userId);
+    if (currentCreditUsed + dto.amount > MAX_CREDIT_LIMIT) {
+      throw new BadRequestException(
+        `Loan request exceeds ₦${MAX_CREDIT_LIMIT}. You have ₦${MAX_CREDIT_LIMIT - currentCreditUsed} left.`,
+      );
+    }
+
+    const validCategories = ['fashion', 'electronics', 'home appliances'];
+    if (!validCategories.includes(dto.category.toLowerCase())) {
+      throw new BadRequestException('Invalid loan category');
+    }
+
+    const loan = await this.prisma.loan.create({
+      data: {
+        userId,
+        amount: dto.amount,
+        purpose: dto.purpose,
+        duration: dto.durationInMonths,
+        status: 'pending',
+        loanType: 'undecided',
+        repaymentType: 'undecided',
+        interestRate: 0,
+        category: dto.category.toLowerCase(),
+        remainingBalance: dto.amount,
+        vendor: dto.vendor,
+      },
+    });
+
+    await this.emailService.sendEmail(
+      user.email,
+      'Loan Application Received',
+      `Your loan application for ₦${dto.amount} has been received.`,
+      `<p>Your loan application for ₦${dto.amount}</p>`,
+    );
+
+    return {
+      message: 'Loan application submitted',
+      data: loan,
+    };
+  }
+
+  async getUserLoanHistory(userId: string) {
+    const loans = await this.prisma.loan.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        loanRepayments: true,
+      },
+    });
+
+    return loans.map((loan) => ({
+      loanId: loan.id,
+      amountApproved: loan.amount,
+      status: loan.status,
+      interestRate: loan.interestRate,
+      durationInMonths: loan.duration,
+      category: loan.category,
+      createdAt: loan.createdAt,
+      repayments: loan.loanRepayments.map((repayment) => ({
+        amountPaid: repayment.amount,
+        paidAt: repayment.repaymentDate,
+      })),
+      remainingBalance: loan.remainingBalance,
+    }));
+  }
+
+  async getUserTransactions(userId: string) {
+    const repayments = await this.prisma.loanRepayment.findMany({
+      where: { loan: { userId } },
+      include: { loan: true },
+      orderBy: { repaymentDate: 'desc' },
+    });
+
+    const usedCredit = await this.getUserUsedCredit(userId);
+
+    return {
       userId,
-      amount: dto.amount,
-      purpose: dto.purpose,
-      duration: dto.durationInMonths,
-      status: 'pending',
-      loanType: 'undecided',
-      repaymentType: 'undecided',
-      interestRate: 0,
-      category: dto.category.toLowerCase(),
-      remainingBalance: dto.amount,
-      vendor: dto.vendor,
-    },
-  });
+      totalCreditLimit: MAX_CREDIT_LIMIT,
+      usedCredit,
+      availableCredit: MAX_CREDIT_LIMIT - usedCredit,
+      repayments,
+    };
+  }
 
-  await this.emailService.sendEmail(
-    user.email,
-    'Loan Application Received',
-    `Your loan application for ₦${dto.amount} has been received and is under review.`,
-    `<p>Your loan application for <strong>₦${dto.amount}</strong> has been received and is under review.</p>`,
-  );
-
-  return {
-    message: 'Loan application submitted successfully',
-    data: loan,
-  };
-}
-
-  // Approve a loan (admin only)
   async approveLoan(loanId: string, adminId: string, adminPassword: string) {
     if (!adminId || !adminPassword) {
       throw new BadRequestException('Admin ID and password are required');
@@ -62,7 +126,7 @@ export class LoansService {
         isAdmin: true,
         OR: [
           { id: adminId },
-          { email: typeof adminId === 'string' ? adminId.toLowerCase() : '' },
+          { email: adminId?.toLowerCase() },
           { phone: adminId },
         ],
       },
@@ -78,14 +142,14 @@ export class LoansService {
     const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
     if (!loan) throw new NotFoundException('Loan not found');
 
-    const randomInterestRate = parseFloat((Math.random() * 7 + 3).toFixed(2)); // Random interest rate between 3% and 10%
+    const randomInterestRate = parseFloat((Math.random() * 7 + 3).toFixed(2));
 
     const updatedLoan = await this.prisma.loan.update({
       where: { id: loanId },
       data: {
         status: 'approved',
         approvalDate: new Date(),
-        interestRate: randomInterestRate, // Set the interest rate for the loan
+        interestRate: randomInterestRate,
         loanType: 'personal',
         repaymentType: 'monthly',
       },
@@ -107,14 +171,13 @@ export class LoansService {
     };
   }
 
-  // Flag/Unflag an account (admin only)
   async toggleFlaggedStatus(userId: string, adminId: string, adminPassword: string) {
     const admin = await this.prisma.user.findFirst({
       where: {
         isAdmin: true,
         OR: [
           { id: adminId },
-          { email: typeof adminId === 'string' ? adminId.toLowerCase() : '' },
+          { email: adminId?.toLowerCase() },
           { phone: adminId },
         ],
       },
@@ -132,9 +195,7 @@ export class LoansService {
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        isFlagged: !user.isFlagged, // Toggle flag status
-      },
+      data: { isFlagged: !user.isFlagged },
     });
 
     return {
@@ -143,11 +204,10 @@ export class LoansService {
     };
   }
 
-  // Get repayment history of a loan
   async getRepaymentHistory(loanId: string) {
     const loan = await this.prisma.loan.findUnique({
       where: { id: loanId },
-      include: { user: true }, // Include the user info to show the related user
+      include: { user: true },
     });
 
     if (!loan) throw new NotFoundException('Loan not found');
@@ -158,7 +218,6 @@ export class LoansService {
     });
   }
 
-  // Get loans by category
   async getLoansByCategory(category: string) {
     const validCategories = ['fashion', 'electronics', 'home appliances'];
     if (!validCategories.includes(category.toLowerCase())) {
@@ -171,7 +230,6 @@ export class LoansService {
     });
   }
 
-  // Get loans by user
   async getLoansByUser(userId: string) {
     return this.prisma.loan.findMany({
       where: { userId },
@@ -179,7 +237,6 @@ export class LoansService {
     });
   }
 
-  // Repay a loan
   async repayLoan(loanId: string, userId: string, dto: RepayLoanDto) {
     const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
     if (!loan) throw new NotFoundException('Loan not found');
@@ -192,7 +249,6 @@ export class LoansService {
       throw new BadRequestException('Repayment amount must be greater than zero');
     }
 
-    // Calculate the total amount to repay including the interest
     const totalLoanAmount = loan.amount + (loan.amount * loan.interestRate) / 100;
     const remainingBalance = loan.remainingBalance - dto.amount;
 
@@ -200,13 +256,12 @@ export class LoansService {
       throw new BadRequestException('Repayment amount exceeds remaining balance');
     }
 
-    // Update loan repayment date and remaining balance
     const updatedLoan = await this.prisma.loan.update({
       where: { id: loanId },
       data: {
-        remainingBalance: remainingBalance,
-        repaymentDate: new Date(), // Store the repayment date
-        status: remainingBalance === 0 ? 'paid off' : loan.status, // Mark as paid off if balance is zero
+        remainingBalance,
+        repaymentDate: new Date(),
+        status: remainingBalance === 0 ? 'paid off' : loan.status,
       },
     });
 
@@ -226,7 +281,6 @@ export class LoansService {
     };
   }
 
-  // Get market share (loan percentage) by category
   async getLoanStatsByCategory() {
     const totalLoans = await this.prisma.loan.count();
     const categories = ['fashion', 'electronics', 'home appliances'];
@@ -238,16 +292,38 @@ export class LoansService {
           category,
           percentage: totalLoans === 0 ? 0 : parseFloat(((count / totalLoans) * 100).toFixed(2)),
         };
-      })
+      }),
     );
 
     return distribution;
   }
 
-  // Get total loan amount for a user
   async getUserTotalLoan(userId: string) {
     const loans = await this.prisma.loan.findMany({ where: { userId } });
     const total = loans.reduce((sum, loan) => sum + loan.amount, 0);
     return { userId, totalLoan: total };
+  }
+
+  async getAllLoanHistory() {
+    const loans = await this.prisma.loan.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: true,
+      },
+    });
+
+    return loans.map((loan) => ({
+      loanId: loan.id,
+      amountApproved: loan.amount,
+      status: loan.status,
+      interestRate: loan.interestRate,
+      durationInMonths: loan.duration,
+      category: loan.category,
+      createdAt: loan.createdAt,
+      user: {
+        userId: loan.userId,
+        name: loan.user.fullName,
+      },
+    }));
   }
 }

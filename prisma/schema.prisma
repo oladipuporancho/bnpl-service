@@ -32,7 +32,7 @@ model User {
 
 
 model Loan {
-  id               String    @id @default(uuid())
+  id               String           @id @default(uuid())
   userId           String
   amount           Float
   vendor           String?
@@ -41,17 +41,16 @@ model Loan {
   interestRate     Float
   duration         Int
   purpose          String?
-  status           String    @default("pending")
+  status           String           @default("pending")
   approvalDate     DateTime?
   repaymentDate    DateTime?
   category         String
-  user             User      @relation(name: "UserLoans", fields: [userId], references: [id])
-  createdAt        DateTime  @default(now())
-  remainingBalance Float     @default(0)
-
-  // Reverse relation to LoanRepayment
-  loanRepayments   LoanRepayment[] @relation("LoanRepayments")
+  user             User             @relation(name: "UserLoans", fields: [userId], references: [id])
+  createdAt        DateTime         @default(now())
+  remainingBalance Float            @default(0)
+  loanRepayments   LoanRepayment[]  @relation("LoanRepayments")
 }
+
 
 model PasswordResetToken {
   token      String   @id
