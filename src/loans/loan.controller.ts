@@ -5,7 +5,6 @@ import {
   Param,
   Get,
   Patch,
-  BadRequestException,
 } from '@nestjs/common';
 import { LoansService } from './loan.service';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
@@ -57,8 +56,13 @@ export class LoansController {
     return this.loansService.getUserTotalLoan(userId);
   }
 
-  @Get('history/all')  
+  @Get('history/all')
   getAllLoanHistory() {
     return this.loansService.getAllLoanHistory();
+  }
+
+  @Get('repayment-schedule/:userId')
+  getUserRepaymentSchedule(@Param('userId') userId: string) {
+    return this.loansService.getUserRepaymentSchedule(userId);
   }
 }

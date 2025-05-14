@@ -328,4 +328,39 @@ export class LoansService {
       },
     }));
   }
+
+  async getUserRepaymentSchedule(userId: string) {
+    const loans = await this.prisma.loan.findMany({
+      where: {
+        userId,
+        status: 'approved',
+      },
+      include: {
+        user: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return loans.map((loan) => {
+      const interestAmount = parseFloat(((loan.amount * loan.interestRate) / 100).toFixed(2));
+      const totalRepayable = parseFloat((loan.amount + interestAmount).toFixed(2));
+
+      return {
+        loanId: loan.id,
+        category: loan.category,
+        purpose: loan.purpose,
+        vendor: loan.vendor,
+        durationInMonths: loan.duration,
+        interestRate: loan.interestRate,
+        interestAmount,
+        totalRepayable,
+        user: {
+          userId: loan.userId,
+          name: loan.user.fullName,
+        },
+        createdAt: loan.createdAt,
+      };
+    });
+  }
+
 }
