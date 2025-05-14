@@ -319,6 +319,8 @@ export class LoansService {
       interestRate: loan.interestRate,
       durationInMonths: loan.duration,
       category: loan.category,
+      purpose: loan.purpose,
+      vendor: loan.vendor,
       createdAt: loan.createdAt,
       user: {
         userId: loan.userId,
