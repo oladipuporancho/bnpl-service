@@ -63,7 +63,7 @@ export class LoansService {
     await this.emailService.sendEmail(
       user.email,
       'Loan Application Received',
-      `Your loan application for ₦${dto.amount} has been received.`,
+      `Your loan application for ₦${dto.amount} has been received and is under review .`,
       `<p>Your loan application for ₦${dto.amount}</p>`,
     );
 
@@ -332,6 +332,50 @@ export class LoansService {
       })),
     };
   }
+  async getApprovedLoanWithPaymentsAndDetails(userId: string) {
+    // Step 1: Find approved or paid off loan
+    const approvedLoan = await this.prisma.loan.findFirst({
+      where: {
+        userId,
+        status: {
+          in: ['approved', 'paid off'],
+        },
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!approvedLoan) {
+      throw new NotFoundException('No approved or paid-off loan found for this user');
+    }
+
+    // Step 2: Fetch repayments separately, ordered by repaymentDate
+    const repayments = await this.prisma.loanRepayment.findMany({
+      where: { loanId: approvedLoan.id },
+      orderBy: { repaymentDate: 'asc' },
+    });
+
+    // Step 3: Calculate total paid
+    const totalPaid = repayments.reduce((sum, repayment) => sum + repayment.amount, 0);
+
+    // Step 4: Return full loan + repayments data
+    return {
+      loanId: approvedLoan.id,
+      amountApproved: approvedLoan.amount,
+      status: approvedLoan.status,
+      interestRate: approvedLoan.interestRate,
+      durationInMonths: approvedLoan.duration,
+      category: approvedLoan.category,
+      purpose: approvedLoan.purpose,
+      vendor: approvedLoan.vendor,
+      remainingBalance: approvedLoan.remainingBalance,
+      createdAt: approvedLoan.createdAt,
+      repayments,
+      totalPaid,
+    };
+  }
+
 
 
   async getUserRepaymentSchedule(userId: string) {

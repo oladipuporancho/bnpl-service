@@ -61,6 +61,11 @@ export class LoansController {
     return this.loansService.getGroupedLoanHistoryForUser(userId);
   }
 
+  @Get('loan-with-payments/:userId')
+async getLoanWithPayments(@Param('userId') userId: string) {
+  return this.loansService.getApprovedLoanWithPaymentsAndDetails(userId);
+}
+
   @Get('repayment-schedule/:userId')
   getUserRepaymentSchedule(@Param('userId') userId: string) {
     return this.loansService.getUserRepaymentSchedule(userId);
