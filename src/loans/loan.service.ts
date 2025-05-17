@@ -333,7 +333,6 @@ export class LoansService {
     };
   }
   async getApprovedLoanWithPaymentsAndDetails(userId: string) {
-    // Step 1: Find approved or paid off loan
     const approvedLoan = await this.prisma.loan.findFirst({
       where: {
         userId,
@@ -343,40 +342,41 @@ export class LoansService {
       },
       include: {
         user: true,
+        loanRepayments: {
+          orderBy: { repaymentDate: 'asc' },
+        },
       },
     });
 
-    if (!approvedLoan) {
-      throw new NotFoundException('No approved or paid-off loan found for this user');
-    }
 
-    // Step 2: Fetch repayments separately, ordered by repaymentDate
-    const repayments = await this.prisma.loanRepayment.findMany({
-      where: { loanId: approvedLoan.id },
-      orderBy: { repaymentDate: 'asc' },
-    });
-
-    // Step 3: Calculate total paid
-    const totalPaid = repayments.reduce((sum, repayment) => sum + repayment.amount, 0);
-
-    // Step 4: Return full loan + repayments data
-    return {
-      loanId: approvedLoan.id,
-      amountApproved: approvedLoan.amount,
-      status: approvedLoan.status,
-      interestRate: approvedLoan.interestRate,
-      durationInMonths: approvedLoan.duration,
-      category: approvedLoan.category,
-      purpose: approvedLoan.purpose,
-      vendor: approvedLoan.vendor,
-      remainingBalance: approvedLoan.remainingBalance,
-      createdAt: approvedLoan.createdAt,
-      repayments,
-      totalPaid,
-    };
+  if (!approvedLoan) {
+    throw new NotFoundException('No approved loan found for this user');
   }
 
+  // ✅ Then: Use it to get repayments
+  const repayments = await this.prisma.loanRepayment.findMany({
+    where: { loanId: approvedLoan.id },
+    orderBy: { repaymentDate: 'asc' },
+  });
 
+
+  const totalPaid = repayments.reduce((sum, r) => sum + r.amount, 0);
+
+  return {
+  loanId: approvedLoan.id,
+  amountApproved: approvedLoan.amount,
+  status: approvedLoan.status,
+  interestRate: approvedLoan.interestRate,
+  durationInMonths: approvedLoan.duration,
+  category: approvedLoan.category,
+  purpose: approvedLoan.purpose,
+  vendor: approvedLoan.vendor,
+  remainingBalance: approvedLoan.remainingBalance,
+  createdAt: approvedLoan.createdAt,
+  repayments,
+  totalPaid,
+};
+}
 
   async getUserRepaymentSchedule(userId: string) {
     const loans = await this.prisma.loan.findMany({

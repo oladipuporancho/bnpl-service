@@ -239,26 +239,47 @@ export class AuthService {
 
   async getAllUsers() {
     const users = await this.prisma.user.findMany({
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        phone: true,
-        bvn: true,
-        bankAccount: true,
-        idType: true,
-        kycStatus: true,
-        isEmailVerified: true,
-        isAdmin: true,
-        createdAt: true,
+      include: {
+        loans: {
+          select: {
+            amount: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    const formattedUsers = users.map((user) => {
+      const totalLoanAmount = user.loans.reduce((sum, loan) => sum + loan.amount, 0);
+      const loanRequestCount = user.loans.length;
+
+      let status = 'Pending';
+      if (user.isFlagged) {
+        status = 'Flagged';
+      } else if (user.kycStatus === 'approved') {
+        status = 'Active';
+      }
+
+      return {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        bvn: user.bvn,
+        bankAccount: user.bankAccount,
+        idType: user.idType,
+        createdAt: user.createdAt,
+        kycStatus: user.kycStatus,
+        status,
+        totalLoanAmount,
+        loanRequestCount,
+      };
+    });
+
     return {
       message: 'All users fetched successfully',
-      count: users.length,
-      users,
+      count: formattedUsers.length,
+      users: formattedUsers,
     };
   }
 }
