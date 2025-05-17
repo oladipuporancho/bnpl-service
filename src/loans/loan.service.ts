@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
@@ -31,6 +32,16 @@ export class LoansService {
   async applyLoan(userId: string, dto: ApplyLoanDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
+
+    //  Check if user is flagged
+    if (user.isFlagged) {
+      throw new ForbiddenException('Your account is flagged, MOTHERFUCKER. You cannot apply for a loan, ko KOSIDANU.');
+    }
+
+    // Check if KYC is not approved
+    if (user.kycStatus !== 'approved') {
+      throw new ForbiddenException('KYC not approved, MOTHERFUCKER. You cannot apply for a loan, ko KOSIDANU.');
+    }
 
     const currentCreditUsed = await this.getUserUsedCredit(userId);
     if (currentCreditUsed + dto.amount > MAX_CREDIT_LIMIT) {
