@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
 import { EmailService } from '../email/email.service';
+import { AnalyticsModule } from '../analytics/analytics.module'; 
 
 @Module({
   imports: [
@@ -13,8 +14,9 @@ import { EmailService } from '../email/email.service';
     ConfigModule.forRoot(),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '15m' }, 
+      signOptions: { expiresIn: '15m' },
     }),
+    AnalyticsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, EmailService],

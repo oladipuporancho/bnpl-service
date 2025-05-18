@@ -73,7 +73,7 @@ export class LoansService {
 
     await this.emailService.sendEmail(
       user.email,
-      'Loan Application Received',
+      'Loan Application Received and is under review',
       `Your loan application for ₦${dto.amount} has been received and is under review .`,
       `<p>Your loan application for ₦${dto.amount}</p>`,
     );
@@ -249,48 +249,68 @@ export class LoansService {
   }
 
   async repayLoan(loanId: string, userId: string, dto: RepayLoanDto) {
-    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
-    if (!loan) throw new NotFoundException('Loan not found');
+  // Find the loan
+  const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+  if (!loan) throw new NotFoundException('Loan not found');
 
-    if (loan.userId !== userId) {
-      throw new BadRequestException('User does not own this loan');
-    }
-
-    if (dto.amount <= 0) {
-      throw new BadRequestException('Repayment amount must be greater than zero');
-    }
-
-    const totalLoanAmount = loan.amount + (loan.amount * loan.interestRate) / 100;
-    const remainingBalance = loan.remainingBalance - dto.amount;
-
-    if (remainingBalance < 0) {
-      throw new BadRequestException('Repayment amount exceeds remaining balance');
-    }
-
-    const updatedLoan = await this.prisma.loan.update({
-      where: { id: loanId },
-      data: {
-        remainingBalance,
-        repaymentDate: new Date(),
-        status: remainingBalance === 0 ? 'paid off' : loan.status,
-      },
-    });
-
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      await this.emailService.sendEmail(
-        user.email,
-        'Loan Repayment Received',
-        `Your payment of ₦${dto.amount} has been received. Your remaining balance is ₦${remainingBalance}.`,
-        `<p>Your payment of <strong>₦${dto.amount}</strong> has been received. Your remaining balance is <strong>₦${remainingBalance}</strong>.</p>`,
-      );
-    }
-
-    return {
-      message: 'Loan repayment processed successfully',
-      data: updatedLoan,
-    };
+  // Validate user owns the loan
+  if (loan.userId !== userId) {
+    throw new BadRequestException('User does not own this loan');
   }
+
+  // Validate repayment amount
+  if (dto.amount <= 0) {
+    throw new BadRequestException('Repayment amount must be greater than zero');
+  }
+
+  // Calculate total amount including interest
+  const totalLoanAmount = loan.amount + (loan.amount * loan.interestRate) / 100;
+
+  // If remainingBalance is not initialized, set it to totalLoanAmount
+  const currentRemainingBalance = loan.remainingBalance ?? totalLoanAmount;
+
+  // Calculate new remaining balance after this repayment
+  const remainingBalance = currentRemainingBalance - dto.amount;
+
+  if (remainingBalance < 0) {
+    throw new BadRequestException('Repayment amount exceeds remaining balance');
+  }
+
+  // Update loan remaining balance and status
+  const updatedLoan = await this.prisma.loan.update({
+    where: { id: loanId },
+    data: {
+      remainingBalance,
+      repaymentDate: new Date(),
+      status: remainingBalance === 0 ? 'paid off' : loan.status,
+    },
+  });
+
+  // Record this repayment in the LoanRepayment table
+  await this.prisma.loanRepayment.create({
+    data: {
+      loanId,
+      amount: dto.amount,
+      repaymentDate: new Date(),
+    },
+  });
+
+  // Notify the user by email
+  const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (user) {
+    await this.emailService.sendEmail(
+      user.email,
+      'Loan Repayment Received',
+      `Your payment of ₦${dto.amount} has been received. Your remaining balance is ₦${remainingBalance.toFixed(2)}.`,
+      `<p>Your payment of <strong>₦${dto.amount}</strong> has been received. Your remaining balance is <strong>₦${remainingBalance.toFixed(2)}</strong>.</p>`,
+    );
+  }
+
+  return {
+    message: 'Loan repayment processed successfully',
+    data: updatedLoan,
+  };
+}
 
   async getLoanStatsByCategory() {
     const totalLoans = await this.prisma.loan.count();
@@ -422,4 +442,41 @@ export class LoansService {
       };
     });
   }
+  async getAllLoanApplications() {
+    const loans = await this.prisma.loan.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            phone: true,
+          },
+        },
+        loanRepayments: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return loans.map((loan) => ({
+      loanId: loan.id,
+      amount: loan.amount,
+      purpose: loan.purpose,
+      durationInMonths: loan.duration,
+      status: loan.status,
+      interestRate: loan.interestRate,
+      category: loan.category,
+      vendor: loan.vendor,
+      createdAt: loan.createdAt,
+      user: loan.user, // already has id, email, fullName, phone
+      paymentHistory: loan.loanRepayments.map((repayment) => ({
+        amountPaid: repayment.amount,
+        repaymentDate: repayment.repaymentDate,
+      })),
+      remainingBalance: loan.remainingBalance,
+    }));
+  }
+
+
+
 }

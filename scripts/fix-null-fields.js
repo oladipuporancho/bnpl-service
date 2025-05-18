@@ -19,3 +19,4 @@ fixNullFields()
     process.exit(1);
 })
     .finally(() => prisma.$disconnect());
+//# sourceMappingURL=fix-null-fields.js.map

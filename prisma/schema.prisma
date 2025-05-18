@@ -83,6 +83,6 @@ model LoanRepayment {
   amount        Float
   repaymentDate DateTime
   createdAt     DateTime @default(now())
-  paidAt     DateTime @default(now())
-  loan          Loan     @relation("LoanToRepayments", fields: [loanId], references: [id]) // ✅ MATCHING relation name here
+  paidAt        DateTime @default(now())
+  loan          Loan     @relation("LoanToRepayments", fields: [loanId], references: [id])
 }

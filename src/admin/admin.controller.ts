@@ -1,4 +1,4 @@
-import { Controller, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Patch, Param, Body, Get } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
@@ -24,5 +24,10 @@ export class AdminController {
       userId,
       body.decision,
     );
+  }
+
+  @Get('flagged-accounts')
+  async getFlaggedAccounts() {
+    return this.adminService.getAllFlaggedAccounts();
   }
 }

@@ -1,7 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AdminService {
@@ -63,5 +62,20 @@ export class AdminService {
       message: `KYC ${decision}d successfully`,
       data: updatedUser,
     };
+  }
+
+  async getAllFlaggedAccounts() {
+    const flaggedUsers = await this.prisma.user.findMany({
+      where: { isFlagged: true },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        isFlagged: true,
+      },
+    });
+
+    return flaggedUsers;
   }
 }

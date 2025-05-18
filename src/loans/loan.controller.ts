@@ -70,4 +70,9 @@ async getLoanWithPayments(@Param('userId') userId: string) {
   getUserRepaymentSchedule(@Param('userId') userId: string) {
     return this.loansService.getUserRepaymentSchedule(userId);
   }
+
+  @Get('applications')
+async getAllLoanApplications() {
+  return this.loansService.getAllLoanApplications();
+ }
 }
