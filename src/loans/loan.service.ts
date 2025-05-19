@@ -448,9 +448,7 @@ export class LoansService {
         user: {
           select: {
             id: true,
-            email: true,
             fullName: true,
-            phone: true,
           },
         },
         loanRepayments: true,
