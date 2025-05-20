@@ -1,7 +1,7 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsDateString, IsOptional } from 'class-validator';
 
 export class RepayLoanDto {
   @IsNumber()
   @IsNotEmpty()
-  amount: number;  // The amount the user wants to repay
+  amount: number;
 }

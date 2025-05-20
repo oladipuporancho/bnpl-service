@@ -18,13 +18,13 @@ async function testFetchLoanWithRepayments(prisma: PrismaClient) {
           },
         },
         loanRepayments: {
-          orderBy: { repaymentDate: 'asc' }, // optional: order payments by date
+          orderBy: { paymentDate: 'asc' }, // order payments by paymentDate
         },
       },
     });
 
     if (!loan) {
-      console.log('❌ Loan not found');
+      console.log('Loan not found');
       return;
     }
 
@@ -40,8 +40,8 @@ async function testFetchLoanWithRepayments(prisma: PrismaClient) {
       createdAt: loan.createdAt,
       user: loan.user,
       paymentHistory: loan.loanRepayments.map((repayment) => ({
-        amountPaid: repayment.amount,
-        repaymentDate: repayment.repaymentDate,
+        amountpaid: repayment.amountpaid,
+        repaymentDate: repayment.paymentDate, // Use paymentDate here
       })),
       remainingBalance: loan.remainingBalance,
     };
@@ -49,7 +49,7 @@ async function testFetchLoanWithRepayments(prisma: PrismaClient) {
     console.log('✅ Formatted Loan with Repayments:');
     console.dir(formattedLoan, { depth: null });
   } catch (error) {
-    console.error('🚨 Error fetching loan:', error);
+    console.error(' Error fetching loan:', error);
   }
 }
 

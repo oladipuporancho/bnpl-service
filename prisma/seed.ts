@@ -19,7 +19,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Admin user created or updated successfully.');
+  console.log(' Admin user created or updated successfully.');
 }
 
 main()

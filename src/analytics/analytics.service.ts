@@ -13,13 +13,13 @@ export class AnalyticsService {
         where: { status: 'approved' },
       }),
       this.prisma.loanRepayment.aggregate({
-        _sum: { amount: true },
+        _sum: { amountpaid: true },
       }),
       this.prisma.user.count({ where: { isFlagged: true } }),
     ]);
 
     const totalLoanAmount = activeLoans._sum.amount || 0;
-    const totalRepayment = totalRepaid._sum.amount || 0;
+    const totalRepayment = totalRepaid._sum.amountpaid || 0;
     const repaymentRate = totalLoanAmount > 0
       ? ((totalRepayment / totalLoanAmount) * 100).toFixed(1)
       : '0.0';

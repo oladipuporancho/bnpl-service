@@ -102,8 +102,8 @@ export class LoansService {
       category: loan.category,
       createdAt: loan.createdAt,
       repayments: loan.loanRepayments.map((repayment) => ({
-        amountPaid: repayment.amount,
-        paidAt: repayment.repaymentDate,
+        amountpaid: repayment.amountpaid,
+        paidAt: repayment.paymentDate,
       })),
       remainingBalance: loan.remainingBalance,
     }));
@@ -113,7 +113,7 @@ export class LoansService {
     const repayments = await this.prisma.loanRepayment.findMany({
       where: { loan: { userId } },
       include: { loan: true },
-      orderBy: { repaymentDate: 'desc' },
+      orderBy: { paymentDate: 'desc' },
     });
 
     const usedCredit = await this.getUserUsedCredit(userId);
@@ -124,61 +124,6 @@ export class LoansService {
       usedCredit,
       availableCredit: MAX_CREDIT_LIMIT - usedCredit,
       repayments,
-    };
-  }
-
-  async approveLoan(loanId: string, adminId: string, adminPassword: string) {
-    if (!adminId || !adminPassword) {
-      throw new BadRequestException('Admin ID and password are required');
-    }
-
-    const admin = await this.prisma.user.findFirst({
-      where: {
-        isAdmin: true,
-        OR: [
-          { id: adminId },
-          { email: adminId?.toLowerCase() },
-          { phone: adminId },
-        ],
-      },
-    });
-
-    if (!admin) throw new NotFoundException('Admin not found or not authorized');
-
-    const passwordMatch = await bcrypt.compare(adminPassword, admin.password);
-    if (!passwordMatch) {
-      throw new BadRequestException('Invalid admin credentials');
-    }
-
-    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
-    if (!loan) throw new NotFoundException('Loan not found');
-
-    const randomInterestRate = parseFloat((Math.random() * 7 + 3).toFixed(2));
-
-    const updatedLoan = await this.prisma.loan.update({
-      where: { id: loanId },
-      data: {
-        status: 'approved',
-        approvalDate: new Date(),
-        interestRate: randomInterestRate,
-        loanType: 'personal',
-        repaymentType: 'monthly',
-      },
-    });
-
-    const user = await this.prisma.user.findUnique({ where: { id: updatedLoan.userId } });
-    if (user) {
-      await this.emailService.sendEmail(
-        user.email,
-        'Loan Approved',
-        `Your loan of ₦${updatedLoan.amount} has been approved at an interest rate of ${randomInterestRate}%.`,
-        `<p>Congratulations! Your loan of <strong>₦${updatedLoan.amount}</strong> has been approved at an interest rate of <strong>${randomInterestRate}%</strong>.</p>`,
-      );
-    }
-
-    return {
-      message: 'Loan approved by admin',
-      data: updatedLoan,
     };
   }
 
@@ -225,7 +170,7 @@ export class LoansService {
 
     return this.prisma.loanRepayment.findMany({
       where: { loanId },
-      orderBy: { repaymentDate: 'desc' },
+      orderBy: { paymentDate: 'desc' },
     });
   }
 
@@ -249,85 +194,71 @@ export class LoansService {
   }
 
   async repayLoan(loanId: string, userId: string, dto: RepayLoanDto) {
-  // Find the loan
   const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
   if (!loan) throw new NotFoundException('Loan not found');
+  if (loan.userId !== userId) throw new BadRequestException('User does not own this loan');
+  if (dto.amount <= 0) throw new BadRequestException('Repayment amount must be greater than zero');
 
-  // Validate user owns the loan
-  if (loan.userId !== userId) {
-    throw new BadRequestException('User does not own this loan');
-  }
-
-  // Validate repayment amount
-  if (dto.amount <= 0) {
-    throw new BadRequestException('Repayment amount must be greater than zero');
-  }
-
-  // Calculate total amount including interest
+  // Calculate total loan amount with interest
   const totalLoanAmount = loan.amount + (loan.amount * loan.interestRate) / 100;
 
-  // If remainingBalance is not initialized, set it to totalLoanAmount
-  const currentRemainingBalance = loan.remainingBalance ?? totalLoanAmount;
-
-  // Calculate new remaining balance after this repayment
-  const remainingBalance = currentRemainingBalance - dto.amount;
-
-  if (remainingBalance < 0) {
-    throw new BadRequestException('Repayment amount exceeds remaining balance');
+  // Check if repayment amount exceeds remaining balance
+  if (dto.amount > loan.remainingBalance) {
+    throw new BadRequestException(`Repayment amount exceeds remaining balance of ₦${loan.remainingBalance}`);
   }
 
-  // Update loan remaining balance and status
+  // Create repayment record
+  await this.prisma.loanRepayment.create({
+  data: {
+    loanId,
+    amountpaid: dto.amount,
+    repaymentDate: new Date(),
+    paymentDate: new Date(),
+  },
+});
+
+
+
+  // Update remaining balance
+  const newRemainingBalance = loan.remainingBalance - dto.amount;
+
+  // Update loan status if fully repaid
+  const newStatus = newRemainingBalance <= 0 ? 'paid off' : loan.status;
+
   const updatedLoan = await this.prisma.loan.update({
     where: { id: loanId },
     data: {
-      remainingBalance,
-      repaymentDate: new Date(),
-      status: remainingBalance === 0 ? 'paid off' : loan.status,
-    },
-  });
-
-  // Record this repayment in the LoanRepayment table
-  await this.prisma.loanRepayment.create({
-    data: {
-      loanId,
-      amount: dto.amount,
+      remainingBalance: newRemainingBalance,
+      status: newStatus,
       repaymentDate: new Date(),
     },
   });
-
-  // Notify the user by email
-  const user = await this.prisma.user.findUnique({ where: { id: userId } });
-  if (user) {
-    await this.emailService.sendEmail(
-      user.email,
-      'Loan Repayment Received',
-      `Your payment of ₦${dto.amount} has been received. Your remaining balance is ₦${remainingBalance.toFixed(2)}.`,
-      `<p>Your payment of <strong>₦${dto.amount}</strong> has been received. Your remaining balance is <strong>₦${remainingBalance.toFixed(2)}</strong>.</p>`,
-    );
-  }
 
   return {
-    message: 'Loan repayment processed successfully',
+    message: 'Repayment successful',
     data: updatedLoan,
   };
 }
 
-  async getLoanStatsByCategory() {
-    const totalLoans = await this.prisma.loan.count();
-    const categories = ['fashion', 'electronics', 'home appliances'];
 
-    const distribution = await Promise.all(
-      categories.map(async (category) => {
-        const count = await this.prisma.loan.count({ where: { category } });
-        return {
-          category,
-          percentage: totalLoans === 0 ? 0 : parseFloat(((count / totalLoans) * 100).toFixed(2)),
-        };
-      }),
-    );
 
-    return distribution;
-  }
+
+async getLoanStatsByCategory() {
+const categories = ['fashion', 'electronics', 'home appliances'];
+
+const distribution = await Promise.all(
+  categories.map(async (category) => {
+    const count = await this.prisma.loan.count({ where: { category } });
+    return {
+      category,
+      count,  
+    };
+  }),
+);
+
+return distribution;
+}
+
 
   async getUserTotalLoan(userId: string) {
     const loans = await this.prisma.loan.findMany({ where: { userId } });
@@ -374,7 +305,7 @@ export class LoansService {
       include: {
         user: true,
         loanRepayments: {
-          orderBy: { repaymentDate: 'asc' },
+          orderBy: { paymentDate: 'asc' },
         },
       },
     });
@@ -384,14 +315,14 @@ export class LoansService {
     throw new NotFoundException('No approved loan found for this user');
   }
 
-  // ✅ Then: Use it to get repayments
   const repayments = await this.prisma.loanRepayment.findMany({
     where: { loanId: approvedLoan.id },
-    orderBy: { repaymentDate: 'asc' },
+    orderBy: { paymentDate: 'asc' },
   });
 
 
-  const totalPaid = repayments.reduce((sum, r) => sum + r.amount, 0);
+  const totalPaid = repayments.reduce((sum, r) => sum + (r.amountpaid ?? 0), 0);
+
 
   return {
   loanId: approvedLoan.id,
@@ -468,8 +399,8 @@ export class LoansService {
       createdAt: loan.createdAt,
       user: loan.user, // already has id, email, fullName, phone
       paymentHistory: loan.loanRepayments.map((repayment) => ({
-        amountPaid: repayment.amount,
-        repaymentDate: repayment.repaymentDate,
+        amountpaid: repayment.amountpaid,
+        repaymentDate: repayment.paymentDate,
       })),
       remainingBalance: loan.remainingBalance,
     }));

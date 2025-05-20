@@ -1,31 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model User {
-  id              String   @id @default(uuid())
-  fullName        String
-  email           String   @unique
-  phone           String   @unique
-  password        String
-  isAdmin         Boolean  @default(false)
-  bvn             String?  @default("not_set")
-  bankAccount     String?  @default("not_set")
-  idType          String   @default("NIN")
-  isEmailVerified Boolean  @default(false)
-  kycStatus       String   @default("pending")
-  isFlagged       Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  id                  String                   @id @default(uuid())
+  fullName            String
+  email               String                   @unique
+  phone               String                   @unique
+  password            String
+  bvn                 String?                  @default("not_set")
+  bankAccount         String?                  @default("not_set")
+  kycStatus           String                   @default("pending")
+  createdAt           DateTime                 @default(now())
+  isEmailVerified     Boolean                  @default(false)
+  idType              String                   @default("NIN")
+  updatedAt           DateTime                 @updatedAt
+  isAdmin             Boolean                  @default(false)
+  isFlagged           Boolean                  @default(false)
+  emailVerifications  EmailVerificationToken[]
   loans               Loan[]                   @relation("UserLoans")
   passwordResetTokens PasswordResetToken[]
-  emailVerifications  EmailVerificationToken[]
   refreshTokens       RefreshToken[]
 }
 
@@ -33,20 +32,20 @@ model Loan {
   id               String          @id @default(uuid())
   userId           String
   amount           Float
-  vendor           String?
-  loanType         String
-  repaymentType    String
-  interestRate     Float
-  duration         Int
-  purpose          String?
   status           String          @default("pending")
   approvalDate     DateTime?
+  duration         Int
+  interestRate     Float
+  loanType         String
+  purpose          String?
   repaymentDate    DateTime?
+  repaymentType    String
   category         String
-  user             User            @relation(name: "UserLoans", fields: [userId], references: [id])
   createdAt        DateTime        @default(now())
   remainingBalance Float           @default(0)
-  loanRepayments   LoanRepayment[] @relation("LoanToRepayments") // ✅ relation name here
+  vendor           String?
+  user             User            @relation("UserLoans", fields: [userId], references: [id])
+  loanRepayments   LoanRepayment[] @relation("LoanToRepayments")
 }
 
 model PasswordResetToken {
@@ -54,8 +53,7 @@ model PasswordResetToken {
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model EmailVerificationToken {
@@ -63,8 +61,7 @@ model EmailVerificationToken {
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model RefreshToken {
@@ -73,16 +70,15 @@ model RefreshToken {
   userId    String
   createdAt DateTime @default(now())
   expiresAt DateTime
-
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model LoanRepayment {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
+  amountpaid    Float?     @map("amount")
   loanId        String
-  amount        Float
   repaymentDate DateTime
-  createdAt     DateTime @default(now())
-  paidAt        DateTime @default(now())
-  loan          Loan     @relation("LoanToRepayments", fields: [loanId], references: [id])
+  paymentDate   DateTime? @db.Timestamp(6)
+  createdAt     DateTime? @default(now()) @db.Timestamp(6)
+  loan          Loan      @relation("LoanToRepayments", fields: [loanId], references: [id])
 }

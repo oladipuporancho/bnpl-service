@@ -16,7 +16,11 @@ export class AdminController {
   @Patch('kyc/:userId/approve')
   async approveKYC(
     @Param('userId') userId: string,
-    @Body() body: { adminid: string; adminPassword: string; decision: 'approve' | 'reject' },
+    @Body() body: {
+      adminid: string;
+      adminPassword: string;
+      decision: 'approve' | 'reject';
+    },
   ) {
     return this.adminService.approveKYC(
       body.adminid,
@@ -26,8 +30,30 @@ export class AdminController {
     );
   }
 
+  @Patch('loan/:loanId/review')
+  async reviewLoan(
+    @Param('loanId') loanId: string,
+    @Body() body: {
+      adminid: string;
+      adminPassword: string;
+      decision: 'approve' | 'reject';
+    },
+  ) {
+    return this.adminService.reviewLoanApplication(
+      body.adminid,
+      body.adminPassword,
+      loanId,
+      body.decision,
+    );
+  }
+
   @Get('flagged-accounts')
   async getFlaggedAccounts() {
     return this.adminService.getAllFlaggedAccounts();
+  }
+
+  @Get('payment-history')
+  async getPaymentAndLoanHistory() {
+    return this.adminService.getPaymentAndLoanHistory();
   }
 }

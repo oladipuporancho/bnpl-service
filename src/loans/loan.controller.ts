@@ -19,14 +19,6 @@ export class LoansController {
     return this.loansService.applyLoan(dto.userId, dto);
   }
 
-  @Patch(':id/approve')
-  approveLoan(
-    @Param('id') loanId: string,
-    @Body() body: { adminId: string; adminPassword: string },
-  ) {
-    return this.loansService.approveLoan(loanId, body.adminId, body.adminPassword);
-  }
-
   @Get('history/:userId')
   getUserLoanHistory(@Param('userId') userId: string) {
     return this.loansService.getUserLoanHistory(userId);
@@ -39,12 +31,12 @@ export class LoansController {
 
   @Post(':loanId/repay')
   repayLoan(
-    @Param('loanId') loanId: string,
-    @Body() body: { amount: number; userId: string },
-  ) {
-    const dto: RepayLoanDto = { amount: body.amount };
-    return this.loansService.repayLoan(loanId, body.userId, dto);
-  }
+  @Param('loanId') loanId: string,
+  @Body() body: { amount: number; userId: string },
+) {
+  return this.loansService.repayLoan(loanId, body.userId, {amount: body.amount});
+}
+
 
   @Get('stats/category')
   getLoanStatsByCategory() {
