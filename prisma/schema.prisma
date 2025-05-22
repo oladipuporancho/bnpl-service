@@ -77,7 +77,7 @@ model LoanRepayment {
   id            String    @id @default(uuid())
   loanId        String
   loan          Loan      @relation(fields: [loanId], references: [id], name: "LoanToRepayments")
-  amount        Float?
+  amount        Float
   repaymentDate DateTime
   amountpaid    Float     @default(0)
   paymentDate   DateTime?
