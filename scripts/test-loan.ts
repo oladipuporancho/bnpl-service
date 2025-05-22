@@ -18,7 +18,7 @@ async function testFetchLoanWithRepayments(prisma: PrismaClient) {
           },
         },
         loanRepayments: {
-          orderBy: { paymentDate: 'asc' }, // order payments by paymentDate
+          orderBy: { repaymentDate: 'asc' }, // order payments by paymentDate
         },
       },
     });
