@@ -147,18 +147,21 @@ export class AdminService {
       user: loan.user?.fullName || 'Unknown',
       amount: loan.amount,
       date: loan.createdAt,
-      status: loan.status,
+      status: 'approved loan',
+      type: 'disbursement',
     }));
 
     const formattedRepayments = repayments.map((repay) => ({
       user: repay.loan?.user?.fullName || 'Unknown',
       amount: repay.amountpaid,
       date: repay.paymentDate,
+      status: repay.loan.status,
+      type: 'repayment',
     }));
 
-    return {
-      approvedLoans: formattedLoans,
-      repayments: formattedRepayments,
-    };
+    return [
+      ...formattedLoans,
+     ...formattedRepayments,
+   ];
   }
 }

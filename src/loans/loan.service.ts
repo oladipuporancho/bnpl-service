@@ -232,20 +232,23 @@ export class LoansService {
   }
 
   async getLoanStatsByCategory() {
-    const categories = ['fashion', 'electronics', 'home appliances'];
+  const categories = ['fashion', 'electronics', 'home appliances'];
 
-    const distribution = await Promise.all(
-      categories.map(async (category) => {
-        const count = await this.prisma.loan.count({ where: { category } });
-        return {
-          category,
-          count,
-        };
-      }),
-    );
+  const counts = await Promise.all(
+    categories.map(async (category) => {
+      const count = await this.prisma.loan.count({ where: { category } });
+      return { category, count };
+    }),
+  );
 
-    return distribution;
-  }
+  const total = counts.reduce((sum, item) => sum + item.count, 0);
+
+  return counts.map(item => ({
+    category: item.category,
+    value: total > 0 ? Math.round((item.count / total) * 100) : 0,
+  }));
+}
+
 
   async getUserTotalLoan(userId: string) {
     const loans = await this.prisma.loan.findMany({ where: { userId } });
