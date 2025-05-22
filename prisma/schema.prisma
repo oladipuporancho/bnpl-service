@@ -75,10 +75,12 @@ model RefreshToken {
 
 model LoanRepayment {
   id            String    @id @default(uuid())
-  amountpaid    Float?     @map("amount")
   loanId        String
+  loan          Loan      @relation(fields: [loanId], references: [id], name: "LoanToRepayments")
+  amount        Float?
   repaymentDate DateTime
-  paymentDate   DateTime? @db.Timestamp(6)
-  createdAt     DateTime? @default(now()) @db.Timestamp(6)
-  loan          Loan      @relation("LoanToRepayments", fields: [loanId], references: [id])
+  amountpaid    Float     @default(0)
+  paymentDate   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

@@ -206,6 +206,7 @@ export class LoansService {
     await this.prisma.loanRepayment.create({
       data: {
         loanId,
+        amount: dto.amount,
         amountpaid: dto.amount,
         repaymentDate: new Date(),
         paymentDate: new Date(),
