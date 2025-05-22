@@ -99,7 +99,7 @@ export class AdminService {
   );
 
   return {
-    message: `Loan ${decision}d successfully.`,
+    message: `Loan ${decision}ed successfully.`,
     data: updatedLoan,
   };
 }
