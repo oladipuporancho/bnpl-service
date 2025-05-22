@@ -383,7 +383,8 @@ export class LoansService {
       category: loan.category,
       vendor: loan.vendor,
       createdAt: loan.createdAt,
-      user: loan.user,
+      userId: loan.user?.id,
+      fullName: loan.user?.fullName,
       paymentHistory: loan.loanRepayments.map((repayment) => ({
         amount: repayment.amountpaid,
         repaymentDate: repayment.paymentDate,
