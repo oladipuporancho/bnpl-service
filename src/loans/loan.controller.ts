@@ -50,7 +50,7 @@ export class LoansController {
     return this.loansService.getLoansByUser(userId);
   }
 
-  @Post('repay/:loanId/user/:userId')
+  @Post(':loanId/repay')
   repayLoan(
     @Param('loanId') loanId: string,
     @Param('userId') userId: string,
