@@ -1,6 +1,7 @@
 import {
   Injectable,
   ConflictException,
+  NotFoundException,
   UnauthorizedException,
   BadRequestException,
   InternalServerErrorException,
@@ -280,6 +281,38 @@ export class AuthService {
       message: 'All users fetched successfully',
       count: formattedUsers.length,
       users: formattedUsers,
+    };
+  }
+
+  async getUserById(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        bvn: true,
+        bankAccount: true,
+        idType: true,
+        kycStatus: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phone,
+      bvn: user.bvn,
+      bankAccountNumber: user.bankAccount,
+      idType: user.idType,
+      kycStatus: user.kycStatus,
     };
   }
 }

@@ -12,6 +12,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Param } from '@nestjs/common';
+
 
 @Controller('auth')
 export class AuthController {
@@ -75,4 +77,8 @@ export class AuthController {
   getAllUsers() {
     return this.authService.getAllUsers();
   }
+  @Get('users/:id')
+getUserById(@Param('id') id: string) {
+  return this.authService.getUserById(id);
+}
 }

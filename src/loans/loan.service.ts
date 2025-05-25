@@ -82,30 +82,6 @@ export class LoansService {
     };
   }
 
-  async getUserLoanHistory(userId: string) {
-    const loans = await this.prisma.loan.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        loanRepayments: true,
-      },
-    });
-
-    return loans.map((loan) => ({
-      loanId: loan.id,
-      amountApproved: loan.amount,
-      status: loan.status,
-      interestRate: loan.interestRate,
-      durationInMonths: loan.duration,
-      category: loan.category,
-      createdAt: loan.createdAt,
-      repayments: loan.loanRepayments.map((repayment) => ({
-        amount: repayment.amountpaid,
-        paidAt: repayment.paymentDate,
-      })),
-      remainingBalance: loan.remainingBalance,
-    }));
-  }
 
   async getUserTransactions(userId: string) {
     const repayments = await this.prisma.loanRepayment.findMany({
@@ -394,5 +370,57 @@ export class LoansService {
       })),
       remainingBalance: loan.remainingBalance,
     }));
+  }
+
+  async getUserLoanHistory(userId: string) {
+    const approvedLoans = await this.prisma.loan.findMany({
+      where: {
+        approvalDate: { not: null },
+        userId,
+      },
+      include: {
+        user: { select: { fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const repayments = await this.prisma.loanRepayment.findMany({
+      where: {
+        loan: {
+          userId,
+        },
+      },
+      include: {
+        loan: {
+          include: {
+            user: { select: { fullName: true } },
+          },
+        },
+      },
+      orderBy: { paymentDate: 'desc' },
+    });
+
+    const formattedLoans = approvedLoans.map((loan) => ({
+      user: loan.user?.fullName || 'Unknown',
+      amount: loan.amount,
+      date: loan.createdAt,
+      status: 'approved loan',
+      type: 'disbursement',
+    }));
+
+    const formattedRepayments = repayments.map((repay) => ({
+      user: repay.loan?.user?.fullName || 'Unknown',
+      amount: repay.amountpaid,
+      date: repay.paymentDate,
+      status: repay.loan?.status || 'paid off',
+      type: 'repayment',
+    }));
+
+    const history = [...formattedLoans, ...formattedRepayments];
+    history.sort((a, b) =>
+      new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()
+    );
+
+    return history;
   }
 }

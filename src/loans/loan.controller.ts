@@ -5,6 +5,7 @@ import {
   Param,
   Get,
   Patch,
+  Req,
 } from '@nestjs/common';
 import { LoansService } from './loan.service';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
@@ -31,12 +32,11 @@ export class LoansController {
 
   @Post(':loanId/repay')
   repayLoan(
-  @Param('loanId') loanId: string,
-  @Body() body: { amount: number; userId: string },
-) {
-  return this.loansService.repayLoan(loanId, body.userId, {amount: body.amount});
-}
-
+    @Param('loanId') loanId: string,
+    @Body() body: { amount: number; userId: string },
+  ) {
+    return this.loansService.repayLoan(loanId, body.userId, { amount: body.amount });
+  }
 
   @Get('stats/category')
   getLoanStatsByCategory() {
@@ -54,9 +54,9 @@ export class LoansController {
   }
 
   @Get('loan-with-payments/:userId')
-async getLoanWithPayments(@Param('userId') userId: string) {
-  return this.loansService.getApprovedLoanWithPaymentsAndDetails(userId);
-}
+  async getLoanWithPayments(@Param('userId') userId: string) {
+    return this.loansService.getApprovedLoanWithPaymentsAndDetails(userId);
+  }
 
   @Get('repayment-schedule/:userId')
   getUserRepaymentSchedule(@Param('userId') userId: string) {
@@ -64,7 +64,12 @@ async getLoanWithPayments(@Param('userId') userId: string) {
   }
 
   @Get('applications')
-async getAllLoanApplications() {
-  return this.loansService.getAllLoanApplications();
- }
+  async getAllLoanApplications() {
+    return this.loansService.getAllLoanApplications();
+  }
+
+  @Get('history')
+  async getLoggedInUserLoanHistory(@Req() req) {
+    return this.loansService.getUserLoanHistory(req.user.id);
+  }
 }
