@@ -1,12 +1,11 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   Param,
-  Put,
-  Query,
-  Delete,
+  Get,
+  Patch,
+  Req,
 } from '@nestjs/common';
 import { LoansService } from './loan.service';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
@@ -16,9 +15,14 @@ import { RepayLoanDto } from './dto/repay-loan.dto';
 export class LoansController {
   constructor(private readonly loansService: LoansService) {}
 
-  @Post('apply/:userId')
-  applyLoan(@Param('userId') userId: string, @Body() dto: ApplyLoanDto) {
-    return this.loansService.applyLoan(userId, dto);
+  @Post('apply')
+  applyLoan(@Body() dto: ApplyLoanDto) {
+    return this.loansService.applyLoan(dto.userId, dto);
+  }
+
+  @Get('history/:userId')
+  getLoanHistoryByUser(@Param('userId') userId: string) {
+    return this.loansService.getLoanHistoryByUser(userId);
   }
 
   @Get('transactions/:userId')
@@ -26,37 +30,16 @@ export class LoansController {
     return this.loansService.getUserTransactions(userId);
   }
 
-  @Put('flag/:userId/admin/:adminId')
-  toggleFlaggedStatus(
-    @Param('userId') userId: string,
-    @Param('adminId') adminId: string,
-    @Query('adminPassword') adminPassword: string,
-  ) {
-    return this.loansService.toggleFlaggedStatus(userId, adminId, adminPassword);
-  }
-
-  @Get('repayment/history/:loanId')
-  getRepaymentHistory(@Param('loanId') loanId: string) {
-    return this.loansService.getRepaymentHistory(loanId);
-  }
-
-  @Get('category/:category')
-  getLoansByCategory(@Param('category') category: string) {
-    return this.loansService.getLoansByCategory(category);
-  }
-
-  @Get('user/:userId')
-  getLoansByUser(@Param('userId') userId: string) {
-    return this.loansService.getLoansByUser(userId);
-  }
-
   @Post(':loanId/repay')
   repayLoan(
     @Param('loanId') loanId: string,
-    @Param('userId') userId: string,
-    @Body() dto: RepayLoanDto,
+    @Body() body: { amount: number; userId: string },
   ) {
-    return this.loansService.repayLoan(loanId, userId, dto);
+    return this.loansService.repayLoan(
+      loanId,
+      body.userId,
+      { amount: body.amount },
+    );
   }
 
   @Get('stats/category')
@@ -64,7 +47,7 @@ export class LoansController {
     return this.loansService.getLoanStatsByCategory();
   }
 
-  @Get('total/user/:userId')
+  @Get('stats/user-total/:userId')
   getUserTotalLoan(@Param('userId') userId: string) {
     return this.loansService.getUserTotalLoan(userId);
   }
@@ -74,19 +57,28 @@ export class LoansController {
     return this.loansService.getGroupedLoanHistoryForUser(userId);
   }
 
-  @Get('approved/:userId')
-  getApprovedLoanWithPaymentsAndDetails(@Param('userId') userId: string) {
+  @Get('loan-with-payments/:userId')
+  getLoanWithPayments(@Param('userId') userId: string) {
     return this.loansService.getApprovedLoanWithPaymentsAndDetails(userId);
   }
 
-  @Get('payment/:userId')
-  getUserPaymentHistory(@Param('userId') userId: string) {
+  @Get('repayment-schedule/:userId')
+  getUserRepaymentSchedule(@Param('userId') userId: string) {
+    return this.loansService.getUserRepaymentSchedule(userId);
+  }
+
+  @Get('applications')
+  getAllLoanApplications() {
+    return this.loansService.getAllLoanApplications();
+  }
+
+  @Get('payment/user/:userId')
+  getUserPaymentHistoryA(@Param('userId') userId: string) {
     return this.loansService.getUserPaymentHistory(userId);
   }
 
-  @Get('history/:userId')
-getLoanHistoryByUser(@Param('userId') userId: string) {
-  return this.loansService.getLoanHistoryByUser(userId);
- }
-
+  @Get('payment/:userId')
+  getUserPaymentHistoryB(@Param('userId') userId: string) {
+    return this.loansService.getUserPaymentHistory(userId);
+  }
 }
