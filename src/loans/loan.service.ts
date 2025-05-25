@@ -372,55 +372,78 @@ export class LoansService {
     }));
   }
 
-  async getUserLoanHistory(userId: string) {
-    const approvedLoans = await this.prisma.loan.findMany({
-      where: {
-        approvalDate: { not: null },
+  async getUserPaymentHistory(userId: string) {
+  const approvedLoans = await this.prisma.loan.findMany({
+    where: {
+      approvalDate: { not: null },
+      userId,
+    },
+    include: {
+      user: { select: { fullName: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const repayments = await this.prisma.loanRepayment.findMany({
+    where: {
+      loan: {
         userId,
       },
-      include: {
-        user: { select: { fullName: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const repayments = await this.prisma.loanRepayment.findMany({
-      where: {
-        loan: {
-          userId,
+    },
+    include: {
+      loan: {
+        include: {
+          user: { select: { fullName: true } },
         },
       },
-      include: {
-        loan: {
-          include: {
-            user: { select: { fullName: true } },
-          },
-        },
-      },
-      orderBy: { paymentDate: 'desc' },
-    });
+    },
+    orderBy: { paymentDate: 'desc' },
+  });
 
-    const formattedLoans = approvedLoans.map((loan) => ({
-      user: loan.user?.fullName || 'Unknown',
-      amount: loan.amount,
-      date: loan.createdAt,
-      status: 'approved loan',
-      type: 'disbursement',
-    }));
+  const formattedLoans = approvedLoans.map((loan) => ({
+    user: loan.user?.fullName || 'Unknown',
+    amount: loan.amount,
+    date: loan.createdAt,
+    status: 'approved loan',
+    type: 'disbursement',
+  }));
 
-    const formattedRepayments = repayments.map((repay) => ({
-      user: repay.loan?.user?.fullName || 'Unknown',
-      amount: repay.amountpaid,
-      date: repay.paymentDate,
-      status: repay.loan?.status || 'paid off',
-      type: 'repayment',
-    }));
+  const formattedRepayments = repayments.map((repay) => ({
+    user: repay.loan?.user?.fullName || 'Unknown',
+    amount: repay.amountpaid,
+    date: repay.paymentDate,
+    status: repay.loan?.status || 'paid off',
+    type: 'repayment',
+  }));
 
-    const history = [...formattedLoans, ...formattedRepayments];
-    history.sort((a, b) =>
-      new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()
-    );
+  const history = [...formattedLoans, ...formattedRepayments];
+  history.sort((a, b) =>
+    new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()
+  );
 
-    return history;
-  }
+  return history;
+ }
+ async getLoanHistoryByUser(userId: string) {
+
+  const loans = await this.prisma.loan.findMany({
+    where: { userId },
+    include: {
+      loanRepayments: true,  
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return loans.map(loan => ({
+    loanId: loan.id,
+    amountApproved: loan.amount,
+    status: loan.status,
+    interestRate: loan.interestRate,
+    durationInMonths: loan.duration,
+    category: loan.category,
+    createdAt: loan.createdAt,
+    repayments: loan.loanRepayments,
+    remainingBalance: loan.remainingBalance,
+  }));
+}
+
 }
