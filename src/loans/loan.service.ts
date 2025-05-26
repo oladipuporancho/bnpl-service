@@ -355,22 +355,25 @@ export class LoansService {
     return loans.map((loan) => ({
       loanId: loan.id,
       amount: loan.amount,
-      purpose: loan.purpose,
       durationInMonths: loan.duration,
       status: loan.status,
       interestRate: loan.interestRate,
-      category: loan.category,
-      vendor: loan.vendor,
       createdAt: loan.createdAt,
       userId: loan.user?.id,
       fullName: loan.user?.fullName,
+      remainingBalance: loan.remainingBalance,
+      vendorDetails: {
+        vendorName: loan.vendor,
+        purpose: loan.purpose,
+        category: loan.category,
+      },
       paymentHistory: loan.loanRepayments.map((repayment) => ({
         amount: repayment.amountpaid,
         repaymentDate: repayment.paymentDate,
       })),
-      remainingBalance: loan.remainingBalance,
     }));
   }
+
 
   async getUserPaymentHistory(userId: string) {
   const approvedLoans = await this.prisma.loan.findMany({
