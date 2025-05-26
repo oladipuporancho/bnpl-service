@@ -34,11 +34,11 @@ export class LoansService {
     if (!user) throw new NotFoundException('User not found');
 
     if (user.isFlagged) {
-      throw new ForbiddenException('Your account is flagged, MOTHERFUCKER, so therefore. You cannot apply for a loan.');
+      throw new ForbiddenException('Your account is flagged, You cannot apply for a loan.');
     }
 
     if (user.kycStatus !== 'approved') {
-      throw new ForbiddenException('KYC not approved, MOTHERFUCKER. You cannot apply for a loan.');
+      throw new ForbiddenException('KYC not approved. You cannot apply for a loan.');
     }
 
     const currentCreditUsed = await this.getUserUsedCredit(userId);
@@ -428,7 +428,7 @@ export class LoansService {
   const loans = await this.prisma.loan.findMany({
     where: { userId },
     include: {
-      loanRepayments: true,  
+      loanRepayments: true,
     },
     orderBy: { createdAt: 'desc' },
   });
