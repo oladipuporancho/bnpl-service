@@ -355,6 +355,7 @@ export class LoansService {
     return loans.map((loan) => ({
       loanId: loan.id,
       amount: loan.amount,
+      purpose: loan.purpose,
       durationInMonths: loan.duration,
       status: loan.status,
       interestRate: loan.interestRate,
@@ -364,7 +365,6 @@ export class LoansService {
       remainingBalance: loan.remainingBalance,
       vendorDetails: {
         vendorName: loan.vendor,
-        purpose: loan.purpose,
         category: loan.category,
       },
       paymentHistory: loan.loanRepayments.map((repayment) => ({
