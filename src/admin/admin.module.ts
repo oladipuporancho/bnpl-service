@@ -3,7 +3,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailModule } from '../email/email.module';
-import { AuthModule } from '../auth/auth.module'; // 👈 import AuthModule
+import { AuthModule } from '../auth/auth.module'; 
 
 @Module({
   imports: [EmailModule, AuthModule],

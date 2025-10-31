@@ -7,7 +7,7 @@ export class EmailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail', // You can use other email providers here
+      service: 'gmail', 
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -15,7 +15,6 @@ export class EmailService {
     });
   }
 
-  // Send email function
   async sendEmail(to: string, subject: string, text: string, html: string) {
     const mailOptions = {
       from: process.env.EMAIL_USER,

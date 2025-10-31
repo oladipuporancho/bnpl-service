@@ -1,8 +1,8 @@
 export class ApplyLoanDto {
-  userId: string; // Add userId here
+  userId: string; 
   amount: number;
   purpose: string;
   durationInMonths: number;
-  category: string; // Add category here
+  category: string; 
   vendor?: string;
 }

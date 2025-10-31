@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './user.service';
 import { User as PrismaUser } from '@prisma/client';
-import { User as GetUser } from './user.decorator'; // Adjust path if needed
+import { User as GetUser } from './user.decorator'; 
 
 @Controller('users')
 export class UsersController {

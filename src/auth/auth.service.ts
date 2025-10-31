@@ -15,7 +15,6 @@ import { addMinutes } from 'date-fns';
 import * as crypto from 'crypto';
 import { EmailService } from '../email/email.service';
 
-const BASE_URL = 'http://your-app.com';
 
 @Injectable()
 export class AuthService {
@@ -59,7 +58,7 @@ export class AuthService {
           bankAccount: dto.bankAccountNumber,
           idType: dto.idType,
           kycStatus: 'pending',
-          isEmailVerified: true, // auto verify since email verification is removed
+          isEmailVerified: true, 
         },
       });
 
@@ -69,7 +68,7 @@ export class AuthService {
       return {
         message: 'Registration successful.',
         data: {
-          access_token: 'N/A', // no token generated here
+          access_token: 'N/A',
           user: {
             id: user.id,
             fullName: user.fullName,
